@@ -6,6 +6,7 @@ from pydantic import Field
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Morgul Engine"
     API_V1_STR: str = "/api"
+    CORS_ORIGINS: list[str] = ["*"]
     
     # Paths
     BASE_DIR: Path = Path(__file__).resolve().parent

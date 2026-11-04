@@ -70,24 +70,15 @@ class NarrativeEngine:
 
         event_lines = [
             line.strip().lstrip("-").strip() 
-            for line in prompt.split("
-") 
+            for line in prompt.split("\n") 
             if line.strip().startswith("-") and "peaceful" not in line.lower()
         ]
 
         if event_lines:
             events_text = " ".join(f"The records note: {ev.rstrip('.')}." for ev in event_lines[:5])
-            body = f"{intro}
-
-{events_text}
-
-{conclusion}"
+            body = f"{intro}\n\n{events_text}\n\n{conclusion}"
         else:
-            body = f"{intro}
-
-The day passed without notable births or passings; stores and energy were husbanded steadily.
-
-{conclusion}"
+            body = f"{intro}\n\nThe day passed without notable births or passings; stores and energy were husbanded steadily.\n\n{conclusion}"
 
         return body
 

@@ -1,5 +1,6 @@
 import sys
 import json
+import argparse
 from pathlib import Path
 from random import Random
 
@@ -19,8 +20,17 @@ FIRST_NAMES = [
 PROFESSIONS = ["Forager", "Woodcutter", "Stonecutter", "Herbalist", "Hunter", "Weaver"]
 REGIONS = ["Riverlands", "Crag", "Highland", "Lowwood"]
 
-def initialize_world():
+def initialize_world(force: bool = False):
     settings.ensure_directories()
+    
+    if settings.DB_PATH.exists() and not force:
+        conn = get_connection()
+        count = conn.execute("SELECT COUNT(*) FROM world_state").fetchone()[0]
+        conn.close()
+        if count > 0:
+            print(f"[!] Existing world detected at {settings.DB_PATH}. Pass --force to wipe and re-initialize.")
+            return
+
     init_db()
 
     seed_val = getattr(settings, "SIMULATION_SEED", 42)
@@ -57,4 +67,7 @@ def initialize_world():
     print("✓ World seeded deterministically with 30 founding citizens.")
 
 if __name__ == "__main__":
-    initialize_world()
+    parser = argparse.ArgumentParser(description="Initialize Morgul Engine simulation world.")
+    parser.add_argument("--force", action="store_true", help="Force wipe existing database and reinitialize.")
+    args = parser.parse_args()
+    initialize_world(force=args.force)

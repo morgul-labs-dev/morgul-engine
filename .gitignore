@@ -6,7 +6,7 @@ venv/
 .env
 
 # Runtime data
-data/simulation.db
+data/world.db
 data/annals/*.md
 !data/annals/.gitkeep
 

@@ -12,25 +12,41 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Compile and Import Verification
+        run: |
+          python -m compileall -q engine api *.py
+          python -c "import api.main, run_sim, engine.chronicler"
       - name: Initialize Simulation
         run: |
           cp .env.example .env
-          python init_sim.py
-      - name: Run 10-Year Demographic Verification
+          python init_sim.py --force
+      - name: Run Demographic and Bounded Scarcity Verification
         run: |
           python -c "
+          import json
           from engine.core import engine
-          from engine.database import get_connection
-          for _ in range(24 * 365 * 10):
-              r = engine.tick_hour()
-              assert 'error' not in r, r
-          conn = get_connection()
+          from engine.chronicler import record_daily_annal
+          
+          for day in range(1, 365 * 10 + 1):
+              for _ in range(24):
+                  r = engine.tick_hour()
+                  assert 'error' not in r, r
+              if day <= 10:
+                  record_daily_annal(day)
+
+          conn = engine.get_conn()
           living = conn.execute('SELECT COUNT(*) FROM agents WHERE is_alive = 1').fetchone()[0]
           total_deaths = conn.execute('SELECT COUNT(*) FROM agents WHERE is_alive = 0').fetchone()[0]
           infant_deaths = conn.execute('SELECT COUNT(*) FROM agents WHERE is_alive = 0 AND age <= 3.0').fetchone()[0]
-          print(f'Living: {living}, Deaths: {total_deaths}, Infant Deaths: {infant_deaths}')
-          assert living >= 20, f'Population collapsed: {living}'
+          
+          invs = conn.execute('SELECT inventory FROM agents WHERE is_alive = 1').fetchall()
+          rations = [json.loads(i[0] or '{}').get('rations', 0) for i in invs]
+          max_rations = max(rations) if rations else 0
+
+          print(f'Living: {living}, Total Deaths: {total_deaths}, Infant Deaths: {infant_deaths}, Max Rations: {max_rations}')
+          assert 40 <= living <= 90, f'Population outside carrying capacity bounds: {living}'
+          assert max_rations <= 100, f'Hoarding uncapped: max {max_rations}'
           if total_deaths > 0:
               assert (infant_deaths / total_deaths) <= 0.35, f'Infant death ratio too high: {infant_deaths}/{total_deaths}'
-          print('✓ 10-Year CI test passed')
+          print('✓ CI test passed successfully')
           "

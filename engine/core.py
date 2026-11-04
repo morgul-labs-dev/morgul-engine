@@ -69,13 +69,13 @@ class SimulationEngine:
                     "is_alive": 1
                 }
 
-            # 1. Carrying Capacity Pressure (Smooth logistic scaling, minimum 0.40 yield to avoid total extinction)
+            # 1. Carrying Capacity Pressure
             capable_adults = [aid for aid, s in agent_dict.items() if s["age"] > settings.INFANT_MAX_AGE]
             adult_count = len(capable_adults)
             
-            # Density ratio: 1.0 at capacity (65 adults). Yield drops gracefully down to 0.45 under high density
+            # Density curve: harvest rate responds dynamically to crowding
             density = adult_count / max(1, settings.CARRYING_CAPACITY)
-            yield_multiplier = max(0.40, 1.0 / (1.0 + max(0.0, density - 0.7) * 1.2))
+            yield_multiplier = max(0.18, 1.0 - (0.65 * max(0.0, density - 0.5)))
 
             # 2. Update Energy, Circadian Rest & Adult Foraging
             for aid, state in agent_dict.items():
@@ -88,21 +88,25 @@ class SimulationEngine:
                     state["hunger"] = min(100.0, state["hunger"] + 0.35)
                 else:
                     state["energy"] = max(0.0, state["energy"] - 2.5)
-                    state["hunger"] = min(100.0, state["hunger"] + 1.2)
+                    state["hunger"] = min(100.0, state["hunger"] + 1.25)
 
                     # Only capable agents forage
                     if age > settings.INFANT_MAX_AGE and state["energy"] > 20.0:
-                        base_harvest = 0.42 if profession in ["Forager", "Hunter", "Herbalist"] else 0.28
+                        base_harvest = 0.36 if profession in ["Forager", "Hunter", "Herbalist"] else 0.22
                         harvest_rate = base_harvest * yield_multiplier
                         if rng.random() < harvest_rate:
                             state["inv"]["rations"] = state["inv"].get("rations", 0) + 1
 
-                # Gentle spoilage decay: 3% chance per hour only when hoarding above 25 rations
-                if state["inv"].get("rations", 0) > 25 and rng.random() < 0.03:
-                    state["inv"]["rations"] -= 1
+                # Daily Spoilage: executed at midnight (hour 0)
+                # Removes 5% of excess over 20 rations, plus spoilage acceleration over 40
+                if current_hour == 0 and state["inv"].get("rations", 0) > 20:
+                    excess = state["inv"]["rations"] - 20
+                    spoilage = max(1, int(excess * 0.05))
+                    if state["inv"]["rations"] > 40:
+                        spoilage += int((state["inv"]["rations"] - 40) * 0.10)
+                    state["inv"]["rations"] = max(20, state["inv"]["rations"] - spoilage)
 
             # 3. Nutrition: Feed Dependents First, Then Adults
-            # Phase 3a: Dependents feed from parents, then altruistic community members
             for aid, state in agent_dict.items():
                 if state["age"] <= settings.INFANT_MAX_AGE and state["hunger"] > 40.0:
                     if state["inv"].get("rations", 0) > 0:
@@ -119,15 +123,15 @@ class SimulationEngine:
                                 if state["hunger"] <= 40.0:
                                     break
 
-                    # If orphaned, community adults with surplus (> 4 rations) provide aid
+                    # Surplus community aid for vulnerable infants
                     if state["hunger"] > 40.0:
                         for donor_id, donor_state in agent_dict.items():
-                            if donor_state["age"] > settings.INFANT_MAX_AGE and donor_state["inv"].get("rations", 0) >= 5:
+                            if donor_state["age"] > settings.INFANT_MAX_AGE and donor_state["inv"].get("rations", 0) >= 6:
                                 donor_state["inv"]["rations"] -= 1
                                 state["hunger"] = max(0.0, state["hunger"] - 45.0)
                                 break
 
-            # Phase 3b: Adults eat their own rations
+            # Adults eat their own rations
             for aid, state in agent_dict.items():
                 if state["age"] > settings.INFANT_MAX_AGE and state["hunger"] > 40.0:
                     if state["inv"].get("rations", 0) > 0:
@@ -148,12 +152,12 @@ class SimulationEngine:
                     state["is_alive"] = 0
                     events_logged.append(f"{ag['name']} succumbed to starvation at age {int(age)}.")
                 elif age >= settings.BASE_MORTALITY_AGE:
-                    risk = (age - settings.BASE_MORTALITY_AGE) * 0.002
+                    risk = (age - settings.BASE_MORTALITY_AGE) * 0.0025
                     if rng.random() < risk:
                         state["is_alive"] = 0
                         events_logged.append(f"{ag['name']} passed away of old age at {int(age)}.")
 
-            # Batch write updated agent states back to DB
+            # Batch update state
             update_rows = [
                 (
                     round(s["age"], 4),
@@ -172,19 +176,20 @@ class SimulationEngine:
                 WHERE id = ?
             """, update_rows)
 
-            # 5. Reproduction Check (Daily at hour 6)
-            # Food-gated: Both parents must have >= 8 rations; birth rate throttled smoothly if over capacity
-            living_total = len(agent_dict)
-            if current_hour == 6 and living_total < settings.CARRYING_CAPACITY * 1.4:
+            # 5. Food-gated reproduction
+            living_total = len([s for s in agent_dict.values() if s["is_alive"] == 1])
+            if current_hour == 6:
                 fertile_agents = [
                     s for s in agent_dict.values()
                     if s["is_alive"] == 1 
                     and settings.MATURITY_AGE <= s["age"] <= 45.0 
-                    and s["inv"].get("rations", 0) >= 8
+                    and s["inv"].get("rations", 0) >= 6
                 ]
 
-                # Moderate fertility: high when below capacity, throttles down gracefully as target nears
-                birth_prob = max(0.0, 0.18 * (1.0 - (living_total / (settings.CARRYING_CAPACITY * 1.3))))
+                # Modest continuous birth rate: throttles when above capacity
+                capacity_ratio = living_total / max(1, settings.CARRYING_CAPACITY)
+                birth_prob = max(0.01, 0.14 * (1.2 - (0.5 * capacity_ratio)))
+                
                 if len(fertile_agents) >= 2 and rng.random() < birth_prob:
                     p1, p2 = rng.sample(fertile_agents, 2)
                     child_id = f"ag_{rng.getrandbits(32):08x}"
@@ -203,11 +208,11 @@ class SimulationEngine:
                         INSERT INTO agents (
                             id, name, generation, age, current_region, profession,
                             health, hunger, energy, inventory, lineage, traits, is_alive
-                        ) VALUES (?, ?, ?, 0.1, ?, ?, 100.0, 5.0, 100.0, '{"rations": 4}', ?, '[]', 1)
+                        ) VALUES (?, ?, ?, 0.1, ?, ?, 100.0, 5.0, 100.0, '{"rations": 3}', ?, '[]', 1)
                     """, (child_id, child_name, child_gen, child_region, child_prof, json.dumps(lineage)))
                     events_logged.append(f"A child named {child_name} was born to {p1['data']['name']} and {p2['data']['name']}.")
 
-            # 6. Commit updated world state
+            # 6. Commit world state
             conn.execute("""
                 UPDATE world_state
                 SET day = ?, hour = ?, active_events = ?
