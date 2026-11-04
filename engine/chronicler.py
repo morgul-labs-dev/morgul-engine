@@ -1,7 +1,6 @@
 import sys
 import json
 from pathlib import Path
-from typing import Optional
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
@@ -19,7 +18,7 @@ def record_daily_annal(day: int) -> Path:
     with conn:
         state = conn.execute("SELECT active_events FROM world_state ORDER BY id DESC LIMIT 1").fetchone()
         events = json.loads(state["active_events"] or "[]") if state else []
-        
+
         living = conn.execute("SELECT COUNT(*) FROM agents WHERE is_alive = 1").fetchone()[0]
         deceased = conn.execute("SELECT COUNT(*) FROM agents WHERE is_alive = 0").fetchone()[0]
 
@@ -35,7 +34,7 @@ Notable Recorded Events:
 {events_summary}
 """
 
-    lore_text = narrator.generate_chronicle(prompt)
+    lore_text = narrator.generate_chronicle(prompt, day=day)
     filename = f"cycle_{day:04d}.md"
     file_path = settings.ANNALS_DIR / filename
 
@@ -53,7 +52,6 @@ Notable Recorded Events:
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(content)
 
-    # Register in DB
     conn = get_connection()
     with conn:
         conn.execute("""
@@ -62,8 +60,4 @@ Notable Recorded Events:
         """, (day, f"Cycle {day}", str(file_path)))
     conn.close()
 
-    print(f"Chronicle recorded: {file_path}")
     return file_path
-
-if __name__ == "__main__":
-    record_daily_annal(1)

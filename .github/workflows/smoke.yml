@@ -1,4 +1,4 @@
-name: Smoke Test
+name: Simulation CI
 
 on: [push, pull_request]
 
@@ -16,15 +16,21 @@ jobs:
         run: |
           cp .env.example .env
           python init_sim.py
-      - name: Run 30-Day Simulation Verification
+      - name: Run 10-Year Demographic Verification
         run: |
           python -c "
           from engine.core import engine
-          from engine.chronicler import record_daily_annal
-          for _ in range(24 * 30):
+          from engine.database import get_connection
+          for _ in range(24 * 365 * 10):
               r = engine.tick_hour()
               assert 'error' not in r, r
-              if r['cycle_completed']:
-                  record_daily_annal(r['day'])
-          print('✓ Smoke test passed: 30 days executed flawlessly')
+          conn = get_connection()
+          living = conn.execute('SELECT COUNT(*) FROM agents WHERE is_alive = 1').fetchone()[0]
+          total_deaths = conn.execute('SELECT COUNT(*) FROM agents WHERE is_alive = 0').fetchone()[0]
+          infant_deaths = conn.execute('SELECT COUNT(*) FROM agents WHERE is_alive = 0 AND age <= 3.0').fetchone()[0]
+          print(f'Living: {living}, Deaths: {total_deaths}, Infant Deaths: {infant_deaths}')
+          assert living >= 20, f'Population collapsed: {living}'
+          if total_deaths > 0:
+              assert (infant_deaths / total_deaths) <= 0.35, f'Infant death ratio too high: {infant_deaths}/{total_deaths}'
+          print('✓ 10-Year CI test passed')
           "

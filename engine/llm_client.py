@@ -14,8 +14,6 @@ class NarrativeEngine:
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
         key = api_key or settings.OPENAI_API_KEY
         url = base_url or settings.OPENAI_BASE_URL
-        seed_val = getattr(settings, "SIMULATION_SEED", 42)
-        self.rng = Random(seed_val)
 
         self.is_configured = bool(key and not key.startswith("sk-your-") and key != "mock_key")
         if self.is_configured:
@@ -27,7 +25,7 @@ class NarrativeEngine:
         else:
             self.client = None
 
-    def generate_chronicle(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+    def generate_chronicle(self, prompt: str, day: int = 1, system_prompt: Optional[str] = None) -> str:
         """Generates historical lore chapter. Uses OpenAI/Ollama if configured, or procedural synthesis."""
         if self.is_configured and self.client:
             sys_msg = system_prompt or (
@@ -49,10 +47,12 @@ class NarrativeEngine:
             except Exception as e:
                 print(f"[Chronicler Warning] Remote LLM failed ({e}); falling back to procedural synthesis.")
 
-        return self._procedural_narrative(prompt)
+        return self._procedural_narrative(prompt, day=day)
 
-    def _procedural_narrative(self, prompt: str) -> str:
-        """Procedural narrative generator aligned strictly with actual modeled state transitions."""
+    def _procedural_narrative(self, prompt: str, day: int = 1) -> str:
+        """Procedural narrative generator seeded per day for restart reproducibility."""
+        rng = Random(f"{settings.SIMULATION_SEED}:chronicle:{day}")
+
         openings = [
             "The cycle began under pale skies as citizens ventured forth from their dwellings.",
             "Scouring winds swept through the river valleys while the living gathered their strength.",
@@ -65,21 +65,29 @@ class NarrativeEngine:
             "Darkness brought necessary stillness across the encampments, preserving vitality for the morrow."
         ]
 
-        intro = self.rng.choice(openings)
-        conclusion = self.rng.choice(closings)
+        intro = rng.choice(openings)
+        conclusion = rng.choice(closings)
 
-        # Extract event lines cleanly without formatting bugs
         event_lines = [
             line.strip().lstrip("-").strip() 
-            for line in prompt.split("\n") 
+            for line in prompt.split("
+") 
             if line.strip().startswith("-") and "peaceful" not in line.lower()
         ]
 
         if event_lines:
             events_text = " ".join(f"The records note: {ev.rstrip('.')}." for ev in event_lines[:5])
-            body = f"{intro}\n\n{events_text}\n\n{conclusion}"
+            body = f"{intro}
+
+{events_text}
+
+{conclusion}"
         else:
-            body = f"{intro}\n\nThe day passed without notable births or passings; stores and energy were husbanded steadily.\n\n{conclusion}"
+            body = f"{intro}
+
+The day passed without notable births or passings; stores and energy were husbanded steadily.
+
+{conclusion}"
 
         return body
 
