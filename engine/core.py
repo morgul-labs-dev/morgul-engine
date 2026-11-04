@@ -152,10 +152,15 @@ class SimulationEngine:
                     state["is_alive"] = 0
                     events_logged.append(f"{ag['name']} succumbed to starvation at age {int(age)}.")
                 elif age >= settings.BASE_MORTALITY_AGE:
-                    risk = (age - settings.BASE_MORTALITY_AGE) * 0.0025
+                    risk = (age - settings.BASE_MORTALITY_AGE) * 0.003
                     if rng.random() < risk:
                         state["is_alive"] = 0
                         events_logged.append(f"{ag['name']} passed away of old age at {int(age)}.")
+                elif age >= 35.0:
+                    # Natural adult illness/wear baseline (~1-2 deaths per year across community)
+                    if rng.random() < 0.00008:
+                        state["is_alive"] = 0
+                        events_logged.append(f"{ag['name']} succumbed to illness at age {int(age)}.")
 
             # Batch update state
             update_rows = [
@@ -176,19 +181,19 @@ class SimulationEngine:
                 WHERE id = ?
             """, update_rows)
 
-            # 5. Food-gated reproduction
+                        # 5. Food-gated reproduction (Natural soft equilibrium around CARRYING_CAPACITY)
             living_total = len([s for s in agent_dict.values() if s["is_alive"] == 1])
             if current_hour == 6:
                 fertile_agents = [
                     s for s in agent_dict.values()
                     if s["is_alive"] == 1 
                     and settings.MATURITY_AGE <= s["age"] <= 45.0 
-                    and s["inv"].get("rations", 0) >= 6
+                    and s["inv"].get("rations", 0) >= 8
                 ]
 
-                # Modest continuous birth rate: throttles when above capacity
-                capacity_ratio = living_total / max(1, settings.CARRYING_CAPACITY)
-                birth_prob = max(0.01, 0.14 * (1.2 - (0.5 * capacity_ratio)))
+                # Soft logistic pressure: fertility slows when overcrowded, accelerates when underpopulated
+                density_factor = living_total / max(1, settings.CARRYING_CAPACITY)
+                birth_prob = max(0.015, 0.16 * (1.25 - (0.75 * density_factor)))
                 
                 if len(fertile_agents) >= 2 and rng.random() < birth_prob:
                     p1, p2 = rng.sample(fertile_agents, 2)
