@@ -181,9 +181,9 @@ class SimulationEngine:
                 WHERE id = ?
             """, update_rows)
 
-                        # 5. Food-gated reproduction (Natural soft equilibrium around CARRYING_CAPACITY)
+                                    # 5. Food-gated reproduction (Equilibrium centered around CARRYING_CAPACITY)
             living_total = len([s for s in agent_dict.values() if s["is_alive"] == 1])
-            if current_hour == 6:
+            if current_hour == 6 and living_total < settings.CARRYING_CAPACITY:
                 fertile_agents = [
                     s for s in agent_dict.values()
                     if s["is_alive"] == 1 
@@ -191,9 +191,9 @@ class SimulationEngine:
                     and s["inv"].get("rations", 0) >= 8
                 ]
 
-                # Soft logistic pressure: fertility slows when overcrowded, accelerates when underpopulated
-                density_factor = living_total / max(1, settings.CARRYING_CAPACITY)
-                birth_prob = max(0.015, 0.16 * (1.25 - (0.75 * density_factor)))
+                # Dynamic capacity attractor: higher birth chance when under capacity, tapering cleanly to 0 at 65
+                capacity_headroom = max(0.0, 1.0 - (living_total / settings.CARRYING_CAPACITY))
+                birth_prob = 0.22 * capacity_headroom
                 
                 if len(fertile_agents) >= 2 and rng.random() < birth_prob:
                     p1, p2 = rng.sample(fertile_agents, 2)
