@@ -1,16 +1,14 @@
-import argparse
+import sys
 import json
-import random
-import uuid
-from engine.database import get_connection, init_db
-from config import settings
+from pathlib import Path
+from random import Random
 
-DEFAULT_REGIONS = [
-    {"id": "reg_haven", "name": "The Sylvan Vale", "biome": "Forest", "resources": {"timber": 850, "game": 600, "forage": 700}, "danger_level": 0.05},
-    {"id": "reg_cairn", "name": "Cairn Plateau", "biome": "Highlands", "resources": {"stone": 950, "ore": 500, "forage": 250}, "danger_level": 0.15},
-    {"id": "reg_fen", "name": "Mirefang Delta", "biome": "Swamp", "resources": {"herbs": 750, "fish": 800, "peat": 450}, "danger_level": 0.25},
-    {"id": "reg_strand", "name": "The Sunken Strand", "biome": "Coast", "resources": {"salt": 600, "fish": 900, "driftwood": 400}, "danger_level": 0.10}
-]
+ROOT_DIR = Path(__file__).resolve().parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from config import settings
+from engine.database import init_db, get_connection
 
 FIRST_NAMES = [
     "Aelric", "Bram", "Caelen", "Dorothea", "Elysia", "Farrin", "Garrow", "Helena",
@@ -19,67 +17,44 @@ FIRST_NAMES = [
 ]
 
 PROFESSIONS = ["Forager", "Woodcutter", "Stonecutter", "Herbalist", "Hunter", "Weaver"]
+REGIONS = ["Riverlands", "Crag", "Highland", "Lowwood"]
 
-def seed_simulation(founders_count: int, reset: bool = False):
-    if reset and settings.DB_PATH.exists():
-        settings.DB_PATH.unlink(missing_ok=True)
-        print("Existing database wiped.")
-
+def initialize_world():
+    settings.ensure_directories()
     init_db()
+
+    seed_val = getattr(settings, "SIMULATION_SEED", 42)
+    rng = Random(seed_val)
+
     conn = get_connection()
-
     with conn:
-        # Check if already seeded
-        existing_agents = conn.execute("SELECT COUNT(*) FROM agents").fetchone()[0]
-        if existing_agents > 0 and not reset:
-            print(f"Simulation already contains {existing_agents} agents. Pass --reset to re-seed.")
-            return
+        conn.execute("DELETE FROM agents")
+        conn.execute("DELETE FROM world_state")
+        conn.execute("DELETE FROM chronicles")
 
-        # 1. Initialize World State
         conn.execute("""
             INSERT INTO world_state (day, hour, weather, active_events)
-            VALUES (1, 6, 'Dawn Mist', '[]')
+            VALUES (1, 0, 'Clear', '[]')
         """)
 
-        # 2. Seed Regions
-        for r in DEFAULT_REGIONS:
-            conn.execute("""
-                INSERT OR REPLACE INTO regions (id, name, biome, resources, danger_level)
-                VALUES (?, ?, ?, ?, ?)
-            """, (r["id"], r["name"], r["biome"], json.dumps(r["resources"]), r["danger_level"]))
-
-        # 3. Seed Founder Agents with Staggered Demographics
-        names_pool = FIRST_NAMES.copy()
-        random.shuffle(names_pool)
-
-        for i in range(founders_count):
-            agent_id = f"ag_{uuid.uuid4().hex[:8]}"
-            name = names_pool[i % len(names_pool)] if i < len(names_pool) else f"Founder {i+1}"
-            
-            # Stagger founder ages (18 to 36) to prevent simultaneous demographic collapse
-            age = round(random.uniform(18.0, 36.0), 1)
-            region = random.choice(DEFAULT_REGIONS)["id"]
-            profession = random.choice(PROFESSIONS)
-            
-            inventory = {
-                "rations": random.randint(4, 8),
-                "tools": 1
-            }
+        # Seed 30 founding citizens
+        for i in range(30):
+            aid = f"ag_{rng.getrandbits(32):08x}"
+            name = rng.choice(FIRST_NAMES)
+            age = round(rng.uniform(18.0, 38.0), 2)
+            region = rng.choice(REGIONS)
+            prof = rng.choice(PROFESSIONS)
+            inv = {"rations": rng.randint(4, 8)}
 
             conn.execute("""
                 INSERT INTO agents (
                     id, name, generation, age, current_region, profession,
                     health, hunger, energy, inventory, lineage, traits, is_alive
                 ) VALUES (?, ?, 1, ?, ?, ?, 100.0, 10.0, 100.0, ?, '{}', '[]', 1)
-            """, (agent_id, name, age, region, profession, json.dumps(inventory)))
+            """, (aid, name, age, region, prof, json.dumps(inv)))
 
     conn.close()
-    print(f"Simulation seeded successfully with {len(DEFAULT_REGIONS)} regions and {founders_count} founder agents.")
+    print("✓ World seeded deterministically with 30 founding citizens.")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Seed Autonomous AI World Engine")
-    parser.add_argument("--founders", type=int, default=settings.STARTING_FOUNDERS, help="Number of starting agents")
-    parser.add_argument("--reset", action="store_true", help="Wipe database before seeding")
-    args = parser.parse_args()
-
-    seed_simulation(founders_count=args.founders, reset=args.reset)
+    initialize_world()

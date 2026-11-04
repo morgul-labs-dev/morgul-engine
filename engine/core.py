@@ -1,6 +1,5 @@
 import sys
 import json
-import uuid
 from pathlib import Path
 from random import Random
 from typing import Dict, Any, List
@@ -23,11 +22,9 @@ PROFESSIONS = ["Forager", "Woodcutter", "Stonecutter", "Herbalist", "Hunter", "W
 class SimulationEngine:
     def __init__(self):
         settings.ensure_directories()
-        seed_val = getattr(settings, "SIMULATION_SEED", 42)
-        self.rng = Random(seed_val)
 
     def tick_hour(self) -> Dict[str, Any]:
-        """Advances world by 1 hour with deterministic state transitions, circadian loops, and carrying capacity."""
+        """Advances world by 1 hour with deterministic hourly RNG, parental infant feeding, and carrying capacity."""
         conn = get_connection()
         cycle_completed = False
         events_logged: List[str] = []
@@ -46,99 +43,132 @@ class SimulationEngine:
                 current_day += 1
                 cycle_completed = True
 
+            # Deterministic RNG tied strictly to seed, cycle day, and hour
+            seed_base = getattr(settings, "SIMULATION_SEED", 42)
+            rng = Random(f"{seed_base}:{current_day}:{current_hour}")
+
             is_night = (current_hour >= 22 or current_hour < 6)
             agents = conn.execute("SELECT * FROM agents WHERE is_alive = 1").fetchall()
             living_count = len(agents)
 
-            # Regional Carrying Capacity: yield drops as population rises
-            carrying_capacity = 65
-            resource_stress = max(0.2, 1.0 - (living_count / (carrying_capacity * 1.5)))
+            carrying_cap = getattr(settings, "CARRYING_CAPACITY", 65)
+            resource_stress = max(0.15, 1.0 - (living_count / (carrying_cap * 1.5)))
 
-            for agent in agents:
-                aid = agent["id"]
-                name = agent["name"]
-                profession = agent["profession"] or "Forager"
-                age = agent["age"] + (1.0 / (365.0 * 24.0))
-                health = agent["health"]
-                hunger = agent["hunger"]
-                energy = agent["energy"]
-                inv = json.loads(agent["inventory"] or "{}")
+            # Pre-load state into memory for parent-infant food sharing
+            agent_dict = {}
+            for ag in agents:
+                agent_dict[ag["id"]] = {
+                    "data": ag,
+                    "inv": json.loads(ag["inventory"] or "{}"),
+                    "hunger": ag["hunger"],
+                    "energy": ag["energy"],
+                    "health": ag["health"],
+                    "age": ag["age"] + (1.0 / (365.0 * 24.0)),
+                    "is_alive": 1
+                }
+
+            # 1. Update Energy, Circadian Rest & Adult Foraging
+            for aid, state in agent_dict.items():
+                ag = state["data"]
+                profession = ag["profession"] or "Forager"
+                age = state["age"]
 
                 if is_night:
-                    # Circadian rest: recover energy, low metabolic draw
-                    energy = min(100.0, energy + 12.5)
-                    hunger = min(100.0, hunger + 0.4)
+                    state["energy"] = min(100.0, state["energy"] + 12.5)
+                    state["hunger"] = min(100.0, state["hunger"] + 0.4)
                 else:
-                    # Daytime labor
-                    energy = max(0.0, energy - 2.8)
-                    hunger = min(100.0, hunger + 1.8)
+                    state["energy"] = max(0.0, state["energy"] - 2.8)
+                    state["hunger"] = min(100.0, state["hunger"] + 1.8)
 
-                    # Foraging with regional resource limits
-                    if energy > 20.0:
-                        harvest_chance = 0.35 * resource_stress if profession in ["Forager", "Hunter", "Herbalist"] else 0.15 * resource_stress
-                        if self.rng.random() < harvest_chance:
-                            inv["rations"] = inv.get("rations", 0) + 1
+                    # Only capable agents (age > infant cutoff) forage
+                    infant_cutoff = getattr(settings, "INFANT_MAX_AGE", 3.0)
+                    if age > infant_cutoff and state["energy"] > 20.0:
+                        harvest_rate = 0.35 * resource_stress if profession in ["Forager", "Hunter", "Herbalist"] else 0.15 * resource_stress
+                        if rng.random() < harvest_rate:
+                            state["inv"]["rations"] = state["inv"].get("rations", 0) + 1
 
-                # Ration spoilage above carrying threshold (prevents hoarding thousands of rations)
-                if inv.get("rations", 0) > 20:
-                    if self.rng.random() < 0.20:
-                        inv["rations"] -= 1
+                # Spoilage decay above 20 rations
+                if state["inv"].get("rations", 0) > 20 and rng.random() < 0.20:
+                    state["inv"]["rations"] -= 1
 
-                # Nutrition consumption
-                if hunger > 40.0 and inv.get("rations", 0) > 0:
-                    inv["rations"] -= 1
-                    hunger = max(0.0, hunger - 45.0)
+            # 2. Nutrition Consumption & Parental Dependent Feeding
+            for aid, state in agent_dict.items():
+                ag = state["data"]
+                age = state["age"]
+                infant_cutoff = getattr(settings, "INFANT_MAX_AGE", 3.0)
 
-                # Starvation damage
-                if hunger >= settings.HUNGER_DAMAGE_THRESHOLD:
-                    health -= 3.5
-                elif hunger < 30.0 and health < 100.0:
-                    health = min(100.0, health + 0.5)
+                # Feed self if rations exist
+                if state["hunger"] > 40.0 and state["inv"].get("rations", 0) > 0:
+                    state["inv"]["rations"] -= 1
+                    state["hunger"] = max(0.0, state["hunger"] - 45.0)
 
-                # Mortality
-                is_alive = 1
-                if health <= 0.0:
-                    is_alive = 0
-                    events_logged.append(f"{name} succumbed to starvation at age {int(age)}.")
+                # Infant parental feeding: draw from living parent if still hungry
+                if state["hunger"] > 40.0 and age <= infant_cutoff:
+                    lineage = json.loads(ag["lineage"] or "{}")
+                    for parent_id in lineage.get("parents", []):
+                        if parent_id in agent_dict and agent_dict[parent_id]["inv"].get("rations", 0) > 1:
+                            agent_dict[parent_id]["inv"]["rations"] -= 1
+                            state["hunger"] = max(0.0, state["hunger"] - 45.0)
+                            break
+
+                # Starvation damage or recovery
+                if state["hunger"] >= settings.HUNGER_DAMAGE_THRESHOLD:
+                    state["health"] -= 3.5
+                elif state["hunger"] < 30.0 and state["health"] < 100.0:
+                    state["health"] = min(100.0, state["health"] + 0.5)
+
+                # Mortality check
+                if state["health"] <= 0.0:
+                    state["is_alive"] = 0
+                    events_logged.append(f"{ag['name']} succumbed to starvation at age {int(age)}.")
                 elif age >= settings.BASE_MORTALITY_AGE:
                     risk = (age - settings.BASE_MORTALITY_AGE) * 0.002
-                    if self.rng.random() < risk:
-                        is_alive = 0
-                        events_logged.append(f"{name} passed away of old age at {int(age)}.")
+                    if rng.random() < risk:
+                        state["is_alive"] = 0
+                        events_logged.append(f"{ag['name']} passed away of old age at {int(age)}.")
 
+            # Write updated agent states back to DB
+            for aid, state in agent_dict.items():
                 conn.execute("""
                     UPDATE agents
                     SET age = ?, hunger = ?, energy = ?, health = ?, inventory = ?, is_alive = ?
                     WHERE id = ?
-                """, (round(age, 4), round(hunger, 2), round(energy, 2), max(0.0, round(health, 2)), json.dumps(inv), is_alive, aid))
+                """, (
+                    round(state["age"], 4),
+                    round(state["hunger"], 2),
+                    round(state["energy"], 2),
+                    max(0.0, round(state["health"], 2)),
+                    json.dumps(state["inv"]),
+                    state["is_alive"],
+                    aid
+                ))
 
-            # Reproduction: Balanced birth rate tied to regional population
+            # 3. Reproduction Check (Daily at hour 6)
             if current_hour == 6 and living_count < 100:
                 fertile_agents = conn.execute(
                     "SELECT * FROM agents WHERE is_alive = 1 AND age >= ? AND age <= 45.0",
                     (settings.MATURITY_AGE,)
                 ).fetchall()
 
-                # Fertility throttles down as population nears carrying capacity
-                fertility_rate = max(0.05, 0.25 * resource_stress)
-                if len(fertile_agents) >= 2 and self.rng.random() < fertility_rate:
-                    p1, p2 = self.rng.sample(fertile_agents, 2)
-                    child_id = f"ag_{uuid.uuid4().hex[:8]}"
-                    child_name = self.rng.choice(FIRST_NAMES)
+                fertility_rate = max(0.05, 0.22 * resource_stress)
+                if len(fertile_agents) >= 2 and rng.random() < fertility_rate:
+                    p1, p2 = rng.sample(fertile_agents, 2)
+                    child_id = f"ag_{rng.getrandbits(32):08x}"
+                    child_name = rng.choice(FIRST_NAMES)
                     child_gen = max(p1["generation"], p2["generation"]) + 1
                     child_region = p1["current_region"]
-                    child_prof = self.rng.choice(PROFESSIONS)
+                    child_prof = rng.choice(PROFESSIONS)
                     lineage = {"parents": [p1["id"], p2["id"]]}
 
                     conn.execute("""
                         INSERT INTO agents (
                             id, name, generation, age, current_region, profession,
                             health, hunger, energy, inventory, lineage, traits, is_alive
-                        ) VALUES (?, ?, ?, 0.1, ?, ?, 100.0, 5.0, 100.0, '{"rations": 3}', ?, '[]', 1)
+                        ) VALUES (?, ?, ?, 0.1, ?, ?, 100.0, 5.0, 100.0, '{"rations": 2}', ?, '[]', 1)
                     """, (child_id, child_name, child_gen, child_region, child_prof, json.dumps(lineage)))
                     events_logged.append(f"A child named {child_name} was born to {p1['name']} and {p2['name']}.")
 
-            # Commit updated state
+            # 4. Commit updated world state
             conn.execute("""
                 UPDATE world_state
                 SET day = ?, hour = ?, active_events = ?
