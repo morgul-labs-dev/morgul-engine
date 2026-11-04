@@ -1,0 +1,24 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Runtime data
+data/simulation.db
+data/annals/*.md
+!data/annals/.gitkeep
+
+# Node / Frontend artifacts
+node_modules/
+dist/
+.DS_Store
+
+# Frontend local env & builds
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Release builds
+dist_release/

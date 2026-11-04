@@ -1,0 +1,10 @@
+MORGUL ENGINE — STUDIO COMMERCIAL LICENSE GRANT
+Copyright (c) 2026 Morgul Labs. All rights reserved.
+
+Subject to payment of the applicable license fee, Morgul Labs grants the purchasing entity a non-exclusive, perpetual, worldwide license to install, execute, modify, and embed the Morgul Engine software into proprietary commercial projects, games, client deliverables, and hosted SaaS services without triggering the open-source disclosure requirements of the GNU Affero General Public License (AGPL-3.0).
+
+SEAT LIMIT:
+This license covers development and deployment activities for up to five (5) concurrent individual software developers within the designated purchasing organization. Additional developer seats require supplemental licensing.
+
+RESTRICTIONS:
+Licensee shall not distribute, sublicense, or publish the uncompiled source code or internal libraries of Morgul Engine as a standalone engine, boilerplate starter kit, or marketplace package.
