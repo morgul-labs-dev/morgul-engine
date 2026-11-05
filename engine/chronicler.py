@@ -35,7 +35,7 @@ Notable Recorded Events:
 """
 
     lore_text = narrator.generate_chronicle(prompt, day=day)
-    filename = f"cycle_{day:04d}.md"
+    filename = f"cycle_{day:06d}.md"
     file_path = settings.ANNALS_DIR / filename
 
     content = f"""# The Annals of Pangaea — Cycle {day}

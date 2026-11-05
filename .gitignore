@@ -22,3 +22,7 @@ frontend/.env
 
 # Release builds
 dist_release/
+data/*.db
+data/*.db-wal
+data/*.db-shm
+*.db

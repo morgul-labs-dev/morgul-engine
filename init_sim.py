@@ -18,14 +18,22 @@ FIRST_NAMES = [
 ]
 
 PROFESSIONS = ["Forager", "Woodcutter", "Stonecutter", "Herbalist", "Hunter", "Weaver"]
-REGIONS = ["Riverlands", "Crag", "Highland", "Lowwood"]
+REGIONS = [
+    ("Riverlands", "Fertile river delta with abundant forage and fresh water."),
+    ("Crag", "Rugged rocky bluffs rich in stone and timber."),
+    ("Highland", "Windswept plateau suitable for grazing and herbal collection."),
+    ("Lowwood", "Dense ancient canopy providing rich game and foraging.")
+]
 
 def initialize_world(force: bool = False):
     settings.ensure_directories()
     
     if settings.DB_PATH.exists() and not force:
         conn = get_connection()
-        count = conn.execute("SELECT COUNT(*) FROM world_state").fetchone()[0]
+        try:
+            count = conn.execute("SELECT COUNT(*) FROM world_state").fetchone()[0]
+        except Exception:
+            count = 0
         conn.close()
         if count > 0:
             print(f"[!] Existing world detected at {settings.DB_PATH}. Pass --force to wipe and re-initialize.")
@@ -41,18 +49,34 @@ def initialize_world(force: bool = False):
         conn.execute("DELETE FROM agents")
         conn.execute("DELETE FROM world_state")
         conn.execute("DELETE FROM chronicles")
+        try:
+            conn.execute("DELETE FROM regions")
+        except Exception:
+            pass
+
+        # Seed Regions
+        for r_name, r_desc in REGIONS:
+            try:
+                conn.execute("""
+                    INSERT OR REPLACE INTO regions (name, description, resources)
+                    VALUES (?, ?, ?)
+                """, (r_name, r_desc, json.dumps({"forage_abundance": 1.0})))
+            except Exception:
+                pass
 
         conn.execute("""
             INSERT INTO world_state (day, hour, weather, active_events)
             VALUES (1, 0, 'Clear', '[]')
         """)
 
-        # Seed 30 founding citizens
-        for i in range(30):
+        # Seed starting citizens
+        region_names = [r[0] for r in REGIONS]
+        num_founders = getattr(settings, "STARTING_FOUNDERS", 30)
+        for i in range(num_founders):
             aid = f"ag_{rng.getrandbits(32):08x}"
             name = rng.choice(FIRST_NAMES)
             age = round(rng.uniform(18.0, 38.0), 2)
-            region = rng.choice(REGIONS)
+            region = rng.choice(region_names)
             prof = rng.choice(PROFESSIONS)
             inv = {"rations": rng.randint(4, 8)}
 
@@ -64,7 +88,7 @@ def initialize_world(force: bool = False):
             """, (aid, name, age, region, prof, json.dumps(inv)))
 
     conn.close()
-    print("✓ World seeded deterministically with 30 founding citizens.")
+    print(f"✓ World seeded deterministically with {num_founders} founding citizens and {len(REGIONS)} regions.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Initialize Morgul Engine simulation world.")

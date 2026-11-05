@@ -138,7 +138,7 @@ class SimulationEngine:
                         state["inv"]["rations"] -= 1
                         state["hunger"] = max(0.0, state["hunger"] - 45.0)
 
-            # 4. Starvation & Mortality
+                        # 4. Starvation & Mortality with smooth lifecycle progression
             for aid, state in agent_dict.items():
                 ag = state["data"]
                 age = state["age"]
@@ -152,17 +152,19 @@ class SimulationEngine:
                     state["is_alive"] = 0
                     events_logged.append(f"{ag['name']} succumbed to starvation at age {int(age)}.")
                 elif age >= settings.BASE_MORTALITY_AGE:
-                    risk = (age - settings.BASE_MORTALITY_AGE) * 0.003
+                    # Old age escalation past 60
+                    risk = (age - settings.BASE_MORTALITY_AGE) * 0.0022
                     if rng.random() < risk:
                         state["is_alive"] = 0
                         events_logged.append(f"{ag['name']} passed away of old age at {int(age)}.")
-                elif age >= 35.0:
-                    # Natural adult illness/wear baseline (~1-2 deaths per year across community)
-                    if rng.random() < 0.00008:
+                elif age >= 25.0:
+                    # Gradual adult mortality risk rising naturally from age 25
+                    wear_risk = (age - 25.0) * 0.0000035
+                    if rng.random() < wear_risk:
                         state["is_alive"] = 0
                         events_logged.append(f"{ag['name']} succumbed to illness at age {int(age)}.")
 
-            # Batch update state
+            # Batch write updated agent states back to DB
             update_rows = [
                 (
                     round(s["age"], 4),
@@ -181,9 +183,9 @@ class SimulationEngine:
                 WHERE id = ?
             """, update_rows)
 
-                                    # 5. Food-gated reproduction (Equilibrium centered around CARRYING_CAPACITY)
+                                                # 5. Food-gated reproduction (Natural replacement equilibrium)
             living_total = len([s for s in agent_dict.values() if s["is_alive"] == 1])
-            if current_hour == 6 and living_total < settings.CARRYING_CAPACITY:
+            if current_hour == 6:
                 fertile_agents = [
                     s for s in agent_dict.values()
                     if s["is_alive"] == 1 
@@ -191,9 +193,9 @@ class SimulationEngine:
                     and s["inv"].get("rations", 0) >= 8
                 ]
 
-                # Dynamic capacity attractor: higher birth chance when under capacity, tapering cleanly to 0 at 65
-                capacity_headroom = max(0.0, 1.0 - (living_total / settings.CARRYING_CAPACITY))
-                birth_prob = 0.22 * capacity_headroom
+                # Soft attractor: scales down as capacity nears, but keeps a small replacement rate
+                headroom = max(-0.2, 1.0 - (living_total / settings.CARRYING_CAPACITY))
+                birth_prob = max(0.007, 0.18 * headroom) if living_total < settings.CARRYING_CAPACITY * 1.25 else 0.0
                 
                 if len(fertile_agents) >= 2 and rng.random() < birth_prob:
                     p1, p2 = rng.sample(fertile_agents, 2)
