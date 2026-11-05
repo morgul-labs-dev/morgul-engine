@@ -5,7 +5,7 @@ A self-hosted, tick-based multi-agent simulation framework written in Python wit
 [![PyPI version](https://img.shields.io/pypi/v/morgul-engine.svg)](https://pypi.org/project/morgul-engine/)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](LICENSE)
 
-- **Live Observer Demo:** https://pangaea.morgul-labs.com
+- **Live Observer Demo (Morgul Engine Pro):** https://pangaea.morgul-labs.com (runs our extended engine with interactive Atlas, factions, and divine interventions; the open-core engine in this repository is the headless simulation foundation)
 - **Studio & Commercial Licenses:** https://morgul-labs.com
 
 ---
