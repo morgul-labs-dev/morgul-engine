@@ -44,14 +44,17 @@ python3 run_sim.py
 
 | Feature | Open Engine (AGPL-3.0) | Developer ($79) | Studio ($299) |
 | :--- | :---: | :---: | :---: |
-| Headless Deterministic Tick Simulation | Yes | Optional | Optional |
-| Circadian Biology & Demographic Equilibrium | Yes | Yes | Yes |
-| SQLite WAL Concurrency & Daily Chronicles | Yes | Yes | Yes |
-| React Pangaea Atlas Visual Dashboard | - | Yes | Yes |
-| Divine Intervention & World Edicts API | - | Yes | Yes |
-| Turnkey Production Docker & Deployment Suite | - | Yes | Yes |
+| Headless Deterministic Tick Simulation * | Yes | – | – |
+| Circadian Biology & Demographic Equilibrium * | Yes | – | – |
+| SQLite WAL Concurrency & Daily Chronicles * | Yes | – | – |
+| Real-Time Event-Driven Multi-Agent World | – | Yes | Yes |
+| React Pangaea Atlas Visual Dashboard | – | Yes | Yes |
+| Divine Intervention & World Edicts API | – | Yes | Yes |
+| Turnkey Production Docker & Deployment Suite | – | Yes | Yes |
 | Permitted Usage Scope | Any use under AGPL-3.0 terms | Internal / Non-Commercial | Commercial (Up to 5 Devs) |
-| Proprietary Closed-Source Exemption | - | - | Included |
+| Proprietary Closed-Source Exemption | – | – | Included |
+
+\* *The deterministic open engine is free on GitHub.*
 
 Learn more about licensing at [morgul-labs.com](https://morgul-labs.com).
 
