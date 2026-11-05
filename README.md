@@ -38,22 +38,23 @@ python3 run_sim.py
 ## Editions & Licensing
 
 - **Open Source Core (AGPL-3.0):** The simulation engine, SQLite WAL persistence layer, and REST API are open-source under the GNU Affero General Public License v3.0. Any network-hosted derivatives or modifications must be released under AGPL-3.0.
-- **Commercial Pro Edition:** Includes the complete React Pangaea Atlas visual dashboard, turnkey multi-container Docker compose orchestration, and a proprietary commercial license grant waiving copyleft disclosure for games, SaaS, and private client deployments. Available at https://morgul-labs.com.
+- **Commercial Pro Edition:** Includes the extended simulation engine (factions, trade corridors, divine interventions), the complete React Pangaea Atlas visual dashboard, turnkey Docker compose orchestration, and proprietary licensing options. Available at https://morgul-labs.com.
 
-## Open Core vs. Pro Edition
+## Editions & Licensing Matrix
 
-| Feature | Open Engine (AGPL-3.0) | Morgul Engine Pro |
-| :--- | :---: | :---: |
-| Headless Deterministic Tick Simulation | Yes | Yes |
-| Circadian Biology & Demographic Equilibrium | Yes | Yes |
-| SQLite WAL Concurrency & Daily Chronicles | Yes | Yes |
-| Extended Simulation Engine (Factions, Caravans, Raids) | - | Yes |
-| React Pangaea Atlas Visual Dashboard | - | Yes |
-| Real-Time Divine Intervention & Dialogue API | - | Yes |
-| Turnkey Production Docker & Deployment Suite | - | Yes |
-| Commercial Closed-Source Exemption | - | Included |
+| Feature | Open Engine (AGPL-3.0) | Developer ($79) | Studio ($299) |
+| :--- | :---: | :---: | :---: |
+| Headless Deterministic Tick Simulation | Yes | Yes | Yes |
+| Circadian Biology & Demographic Equilibrium | Yes | Yes | Yes |
+| SQLite WAL Concurrency & Daily Chronicles | Yes | Yes | Yes |
+| Extended Simulation Engine (Factions, Caravans, Raids) | - | Yes | Yes |
+| React Pangaea Atlas Visual Dashboard | - | Yes | Yes |
+| Real-Time Divine Intervention & Dialogue API | - | Yes | Yes |
+| Turnkey Production Docker & Deployment Suite | - | Yes | Yes |
+| Permitted Usage Scope | Personal / AGPL Projects | Internal / Non-Commercial | Commercial (Up to 5 Devs) |
+| Proprietary Closed-Source Exemption | - | - | Included |
 
-Learn more about Morgul Engine Pro at [morgul-labs.com](https://morgul-labs.com).
+Learn more about licensing at [morgul-labs.com](https://morgul-labs.com).
 
 ## Contributing & License
 

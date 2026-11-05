@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Morgul Engine"
-    ENV: str = Field(default="development", env="ENV")
+    ENV: str = Field(default="production", env="ENV")
     API_V1_STR: str = "/api"
     HOST: str = Field(default="0.0.0.0", env="HOST")
     PORT: int = Field(default=8000, env="PORT")
