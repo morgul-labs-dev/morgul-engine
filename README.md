@@ -44,7 +44,7 @@ python3 run_sim.py
 
 | Feature | Open Engine (AGPL-3.0) | Developer ($79) | Studio ($299) |
 | :--- | :---: | :---: | :---: |
-| Headless Deterministic Tick Simulation | Yes | Yes | Yes |
+| Headless Deterministic Tick Simulation | Yes | Optional | Optional |
 | Circadian Biology & Demographic Equilibrium | Yes | Yes | Yes |
 | SQLite WAL Concurrency & Daily Chronicles | Yes | Yes | Yes |
 | React Pangaea Atlas Visual Dashboard | - | Yes | Yes |
