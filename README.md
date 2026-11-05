@@ -38,7 +38,7 @@ python3 run_sim.py
 ## Editions & Licensing
 
 - **Open Source Core (AGPL-3.0):** The simulation engine, SQLite WAL persistence layer, and REST API are open-source under the GNU Affero General Public License v3.0. Any network-hosted derivatives or modifications must be released under AGPL-3.0.
-- **Commercial Pro Edition:** Includes the extended simulation engine (factions, trade corridors, divine interventions), the complete React Pangaea Atlas visual dashboard, turnkey Docker compose orchestration, and proprietary licensing options. Available at https://morgul-labs.com.
+- **Commercial Pro Edition:** Includes the extended simulation engine (factions, caravans, raids, divine interventions), the complete React Pangaea Atlas visual dashboard, turnkey Docker compose orchestration, and proprietary licensing options. Available at https://morgul-labs.com.
 
 ## Editions & Licensing Matrix
 
@@ -51,7 +51,7 @@ python3 run_sim.py
 | React Pangaea Atlas Visual Dashboard | - | Yes | Yes |
 | Real-Time Divine Intervention & Dialogue API | - | Yes | Yes |
 | Turnkey Production Docker & Deployment Suite | - | Yes | Yes |
-| Permitted Usage Scope | Personal / AGPL Projects | Internal / Non-Commercial | Commercial (Up to 5 Devs) |
+| Permitted Usage Scope | Any use under AGPL-3.0 terms | Internal / Non-Commercial | Commercial (Up to 5 Devs) |
 | Proprietary Closed-Source Exemption | - | - | Included |
 
 Learn more about licensing at [morgul-labs.com](https://morgul-labs.com).
