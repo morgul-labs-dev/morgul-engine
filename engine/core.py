@@ -829,9 +829,9 @@ class SimulationEngine:
             import subprocess, threading
             def _compile_lore(d):
                 try:
-                    py_bin = "/var/www/civ_engine/venv/bin/python3"
-                    script = "/var/www/civ_engine/chronicler.py"
-                    subprocess.run([py_bin, script, "--day", str(d)], cwd="/var/www/civ_engine", check=True)
+                    import sys, os
+                    here = os.path.dirname(os.path.abspath(__file__))
+                    subprocess.run([sys.executable, os.path.join(here, "chronicler.py"), "--day", str(d)], cwd=here, check=True)
                 except Exception as err:
                     print(f"[Chronicler Hook] Error generating lore for day {d}: {err}")
 

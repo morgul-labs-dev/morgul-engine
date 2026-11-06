@@ -8,6 +8,7 @@ import os
 
 DB_DIR = os.getenv("DATA_DIR", "data")
 os.makedirs(DB_DIR, exist_ok=True)
+DB_DIR = os.getenv("DATA_DIR", "data")
 DB_PATH = os.getenv("DB_PATH", os.path.join(DB_DIR, "civilization.db"))
 
 FEMALE_CITIZENS = {

@@ -13,9 +13,9 @@ import argparse
 from datetime import datetime
 import database
 
+DB_PATH = getattr(database, "DB_PATH", "civilization.db")
 DB_DIR = os.getenv("DATA_DIR", "data")
-DB_PATH = os.getenv("DB_PATH", os.path.join(DB_DIR, "civilization.db"))
-OUTPUT_DIR = os.getenv("ANNALS_DIR", "annals")
+OUTPUT_DIR = os.getenv("ANNALS_DIR", os.path.join(DB_DIR, "annals"))
 
 def get_db_connection():
     if not os.path.exists(DB_PATH):
