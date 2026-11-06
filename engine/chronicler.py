@@ -173,7 +173,7 @@ def run_chronicler(day: int = None, output_file: str = None):
 
     if not output_file:
         os.makedirs(OUTPUT_DIR, exist_ok=True)
-        output_file = os.path.join(OUTPUT_DIR, f"annals_day_{day:03d}.md")
+        output_file = os.path.join(OUTPUT_DIR, f"annals_day_{day:06d}.md")
 
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(chapter_md)
