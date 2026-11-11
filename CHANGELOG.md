@@ -20,3 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Safe dictionary lookups on raid resolutions preventing KeyError server crashes.
 - Bounded memory log cap (2,000 entries) preventing unbounded RAM growth.
 - Hardened CORS origins with explicit whitelist enforcement.
+
+## [1.1.0] - 2026-11-11
+### Added
+- **Wasteland Raider Combat Asymmetry:** Scaled marauder combat power by 0.70x to simulate malnutrition and lack of martial militia discipline.
+- **Pyrrhic Attrition Mechanics:** Enforced 15 HP combat fatigue on successful sacks and increased repelled assault damage from 30 HP to 45 HP.
+- **Sterility Mating Block:** Enforced bidirectional sterility checks in `_resolve_mating` preventing sterile agents from initiating or receiving mating proposals.
+
+### Fixed
+- **Database Loader Persistence:** Explicitly reconstructed `agent.is_sterile` from SQLite rows in `database.py`.
+- **API Serializer Fix:** Fixed variable generator binding for `is_sterile` attribute in `/api/sim/state`.
