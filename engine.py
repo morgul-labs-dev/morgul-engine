@@ -301,7 +301,13 @@ class SimulationEngine:
         if not raiders:
             raiders = [leader]
 
-        origin_guild = self.territory_control.get(leader.current_region, {}).get("controlling_guild", "Wild Raiders")
+        raw_origin_guild = self.territory_control.get(leader.current_region, {}).get("controlling_guild", "Wild Raiders")
+        leader_is_raider = ("Raider" in leader.name or getattr(leader, "social_class", "") == "Marauder")
+        if raw_origin_guild == "Wasteland Raiders" and not leader_is_raider:
+            origin_guild = "The Iron Compact"
+        else:
+            origin_guild = raw_origin_guild
+        raiders = [r for r in raiders if ("Raider" in r.name or getattr(r, "social_class", "") == "Marauder") == leader_is_raider] or [leader]
 
         self.active_raids.append({
             "id": f"raid_{len(self.active_raids)}_{random.randint(100,999)}",
@@ -357,25 +363,38 @@ class SimulationEngine:
         if not raider_agents:
             return
 
-        defenders = [
-            a for a in self.agents.values() 
-            if a.current_region == target_reg and getattr(a, 'age', 24.0) >= 16.0 and not a.is_rogue and a.health >= 40
-        ]
-
-        # Calculate combat power with wasteland malnutrition/training handicaps
-        def get_combat_contribution(agent, is_raider_faction):
-            base = (agent.health * 0.7) + (agent.energy * 0.3)
-            # Wasteland raiders suffer -30% power due to poor nutrition and lack of militia discipline
-            if is_raider_faction or 'Raider' in agent.name or getattr(agent, 'social_class', '') == 'Marauder':
-                return base * 0.70
-            return base
-
-        raider_is_wasteland = conquering_guild == 'Wasteland Raiders' or any('Raider' in r.name for r in raider_agents)
         target_territory = self._get_safe_territory(target_reg)
         origin_territory = self._get_safe_territory(origin_reg)
         conquering_guild = raid.get("guild_name", "Raiders")
         defending_guild = target_territory["controlling_guild"]
-        defender_is_wasteland = defending_guild == 'Wasteland Raiders' or any('Raider' in d.name for d in defenders)
+
+        if defending_guild == "Wasteland Raiders":
+            defenders = [
+                a for a in self.agents.values()
+                if a.current_region == target_reg
+                and getattr(a, "age", 24.0) >= 16.0
+                and a.health >= 40
+                and ("Raider" in a.name or getattr(a, "social_class", "") == "Marauder")
+            ]
+        else:
+            defenders = [
+                a for a in self.agents.values()
+                if a.current_region == target_reg
+                and getattr(a, "age", 24.0) >= 16.0
+                and not a.is_rogue
+                and a.health >= 40
+                and "Raider" not in a.name
+                and getattr(a, "social_class", "") != "Marauder"
+            ]
+
+        def get_combat_contribution(agent, is_raider_faction):
+            base = (agent.health * 0.7) + (agent.energy * 0.3)
+            if is_raider_faction or "Raider" in agent.name or getattr(agent, "social_class", "") == "Marauder":
+                return base * 0.70
+            return base
+
+        raider_is_wasteland = conquering_guild == "Wasteland Raiders" or any("Raider" in r.name for r in raider_agents)
+        defender_is_wasteland = defending_guild == "Wasteland Raiders" or any("Raider" in d.name for d in defenders)
 
         raider_power = sum(get_combat_contribution(r, raider_is_wasteland) for r in raider_agents) + random.randint(10, 50)
         defender_power = sum(get_combat_contribution(d, defender_is_wasteland) for d in defenders) + random.randint(10, 60)

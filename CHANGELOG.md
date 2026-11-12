@@ -21,12 +21,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bounded memory log cap (2,000 entries) preventing unbounded RAM growth.
 - Hardened CORS origins with explicit whitelist enforcement.
 
-## [1.1.0] - 2026-11-11
-### Added
-- **Wasteland Raider Combat Asymmetry:** Scaled marauder combat power by 0.70x to simulate malnutrition and lack of martial militia discipline.
-- **Pyrrhic Attrition Mechanics:** Enforced 15 HP combat fatigue on successful sacks and increased repelled assault damage from 30 HP to 45 HP.
-- **Sterility Mating Block:** Enforced bidirectional sterility checks in `_resolve_mating` preventing sterile agents from initiating or receiving mating proposals.
+## [1.1.1] - 2026-11-12
 
 ### Fixed
+- Resolved `UnboundLocalError` in `_resolve_raid_clash()` caused by referencing `conquering_guild` prior to dictionary lookup, which silently aborted raid resolution on impact.
+- Prevented occupied native citizens from being conscripted into defending `Wasteland Raiders` garrisons or recruited into marauder warbands.
+
+## [1.1.0] - 2026-11-11
+### Added
+- **Wasteland Raider Combat Asymmetry:** Scaled combat power by 0.70x to reflect malnutrition and lack of militia discipline.
+- **Pyrrhic Attrition Mechanics:** Added 15 HP combat wear on successful sacks and increased repelled assault damage from 30 to 45 HP.
+- **Sterility Mating Block:** Enforced bidirectional reproduction guards in `_resolve_mating` preventing sterile agents from initiating or receiving mating proposals.
+
+### Changed
 - **Database Loader Persistence:** Explicitly reconstructed `agent.is_sterile` from SQLite rows in `database.py`.
 - **API Serializer Fix:** Fixed variable generator binding for `is_sterile` attribute in `/api/sim/state`.
