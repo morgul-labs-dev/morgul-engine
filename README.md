@@ -1,58 +1,63 @@
 # Morgul Engine
 
-A self-hosted, tick-based multi-agent living world simulation framework written in Python with persistent SQLite Write-Ahead Logging (WAL) and zero mandatory token costs.
+A self-hosted, tick-based multi-agent simulation framework written in Python with persistent SQLite Write-Ahead Logging (WAL) and automated LLM chronicle distillation.
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](LICENSE)
 
-- **Live Observer Demo (Pangaea):** https://pangaea.morgul-labs.com (runs continuous multi-agent simulation with interactive React Atlas, factions, and divine interventions)
-- **Commercial Packages & Licensing:** https://morgul-labs.com
+- **Live Observer Demo (Morgul Engine Pro):** https://pangaea.morgul-labs.com (runs our extended engine with interactive Atlas, factions, and divine interventions; the open-core engine in this repository is the headless simulation foundation)
+- **Studio & Commercial Licenses:** https://morgul-labs.com
 
 ---
 
 ## Architectural Overview
 
-- **Stochastic State Machine Simulation:** Agents autonomously advance through structured hourly state transitions covering biological foraging, resting, labor, kinship, migration, caravan trade routes, and territorial raids. Operates entirely without LMMs at $0 token cost.
-- **SQLite in WAL Mode:** Concurrent, non-blocking snapshot reads across observation workers while the primary simulation engine executes atomic state transactions.
-- **Narrative Chronicle & Dialogue Pipeline:** Automated daily chronicle chapters generated using local Ollama (`llama3.2:3b`) or any standard OpenAI-compatible `/v1` endpoint. Ambient dialogue and whispers activate only when interacted with; if the model is offline, the simulation continues ticking uninterrupted.
-- **Decoupled REST API:** Lightweight FastAPI service delivering real-time world state snapshots, historical annals, and agent inspections.
+- **Deterministic Tick Orchestration:** Agents advance through structured hourly state transitions covering circadian sleep/energy restoration, metabolic foraging, and natural demographic cycles.
+- **SQLite in WAL Mode:** Concurrent, non-blocking snapshot reads across observation workers while the primary simulation engine executes atomic state updates.
+- **Narrative Chronicle Pipeline:** Automated daily chronicle chapters generated using local LLMs (Ollama/vLLM) or remote OpenAI-compatible endpoints, backed by an offline procedural synthesis engine when no model is attached.
+- **Decoupled REST API:** Lightweight FastAPI service delivering real-time world state snapshots and historical annals.
 
 ## Quickstart
 
-gfit clone https://github.com/morgul-labs-dev/morgul-engine.git
+```bash
+git clone https://github.com/morgul-labs-dev/morgul-engine.git
 cd morgul-engine
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 
-# Optional: To connect local Ollama or an OpenAI-compatible endpoint:
-OPENAI_API_KEY=ollama          # any value except mock_key
+# To use Ollama or a local endpoint, edit .env:
+OPENAI_API_KEY=ollama   # any value except mock_key
 OPENAI_BASE_URL=http://localhost:11434/v1
-LLM_MODEL=llama3.2:3b          # or your preferred local model
+LLM_MODEL=llama3        # or your preferred local model
 
-# initialize database and execute simulation
+# Set ENV=development in .env to enable POST /api/tick for local testing.
 python3 init_sim.py
 python3 run_sim.py
+```
+
+## Editions & Licensing
+
+- **Open Source Core (AGPL-3.0):** The simulation engine, SQLite WAL persistence layer, and REST API are open-source under the GNU Affero General Public License v3.0. Any network-hosted derivatives or modifications must be released under AGPL-3.0.
+- **Commercial Pro Edition:** Includes the complete React Pangaea Atlas visual dashboard, the real-time Divine Intervention & Edicts system, turnkey production Docker compose orchestration, and proprietary commercial licensing. Available at https://morgul-labs.com.
 
 ## Editions & Licensing Matrix
 
-Morgul Engine follows an open-core commercial model. The headless Python core is open-source under AGPLL-3.0. For commercial games, SaaS products, client deliverables, or teams needing the real-time visual observer dashboard, commercial editions are available:
+| Feature | Open Engine (AGPL-3.0) | Developer ($79) | Studio ($299) |
+| :--- | :---: | :---: | :---: |
+| Headless Deterministic Tick Simulation * | Yes | – | – |
+| Circadian Biology & Demographic Equilibrium * | Yes | – | – |
+| SQLite WAL Concurrency & Daily Chronicles * | Yes | – | – |
+| Real-Time Event-Driven Multi-Agent World | – | Yes | Yes |
+| React Pangaea Atlas Visual Dashboard | – | Yes | Yes |
+| Divine Intervention & World Edicts API | – | Yes | Yes |
+| Turnkey Production Docker & Deployment Suite | – | Yes | Yes |
+| Permitted Usage Scope | Any use under AGPL-3.0 terms | Internal / Non-Commercial | Commercial (Up to 5 Devs) |
+| Proprietary Closed-Source Exemption | – | – | Included |
 
-| Capability / Rights | Open Core (AGPL-3.0) | Developer Edition ($79) | Studio Commercial ($299) |
-| :--- | :---: |:---: |
-| **Licensing** | AGPL-3.0 (Copyleft) | Proprietary EULA | **Commercial AGPL Waiver** |
-|**Permitted Use** | Open Source / Evaluation | Internal Eval & Prototyping | **Commercial Games, SaaS, Clients** |
-| **Developer Seats** | Community | 1 Developer | **Up to 5 Developers** |
-| **Headless Python Core** | Included | Included | Included |
-| **Hourly Simulation Loop** | Included | Included | Included |
-| **Atlas React Dashboard** | — | **Included** | **Included** |
-| **Divine Intervention Console** | — | **Included** | **Included** |
-| **Docker Compose Stack** | — | **Included** | **Included** |
-| **Procedural Annals Engine** | Included | Included | Included |
-| **Source-Disclosure Exemption** | — | — | **Included (Proprietary Safe)** |
-| **Updates & Support** | Public GitHub Issues | 12 Months Updates | 12 Months Priority Support |
+\* *The deterministic open engine is free on GitHub.*
 
-Learn more and obtain commercial licenses at [morgul-labs.com](https://morgul-labs.com).
+Learn more about licensing at [morgul-labs.com](https://morgul-labs.com).
 
 ## Contributing & License
 
-The core simulation engine in this repository is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE).p Clease review [CONTRIBUTING.md](CONTRIBUTING.md) and sign the [CLA](CLA.md) before submitting pull requests. For commercial closed-source licensing options, visit [morgul-labs.com](https://morgul-labs.com).
+Morgul Engine is licensed under [AGPL-3.0](LICENSE). Please review [CONTRIBUTING.md](CONTRIBUTING.md) and sign the [CLA](CLA.md) before submitting pull requests.

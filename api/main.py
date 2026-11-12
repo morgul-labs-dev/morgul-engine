@@ -106,8 +106,6 @@ def get_annals(limit: int = Query(20, le=100)):
 
 @app.post("/api/tick")
 async def trigger_manual_tick():
-    if getattr(settings, "ENV", "production") != "development":
-        raise HTTPException(status_code=403, detail="Manual ticks are disabled outside development.")
     result = engine.tick_hour()
     if result.get("cycle_completed"):
         record_daily_annal(result["day"])
