@@ -17,7 +17,7 @@ from engine.chronicler import record_daily_annal
 app = FastAPI(
     title="Morgul Engine API",
     description="Autonomous multi-agent simulation backend",
-    version="1.0.0"
+    version="1.2.3"
 )
 
 app.add_middleware(
